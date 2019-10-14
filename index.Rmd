@@ -1,0 +1,249 @@
+---
+title: "APRESENTAÇÃO REGRESSÃO"
+author: "Ivan Maia"
+date: "13 de outubro de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+###BASE DE DADOS
+Título: Banco de Dados da Pesquisa - Banda Larga Fixa
+
+Descrição: Banco de dados das entrevistas da pesquisa de satisfação e qualidade percebida relativa à prestação do Serviço de Comunicação Multimídia - SCM (banda larga fixa)
+
+###Variáveis:
+
+SATISFAÇÃO GERAL
+
+SEXO
+
+RENDA
+
+IDADE
+
+ESTADO 
+
+REGIAO
+
+OPERADORA
+
+B: Oferta e Contratação
+
+B1_1 : Nota atribuída com respeito à facilidade de entendimento dos planos e serviços contratados.
+
+B1_2 : Nota atribuída com respeito ao comprometimento da operadora em cumprir o que foi prometido e divulgado em sua publicidade.
+
+C: Funcionamento
+
+C1_1: Notas atribuídas à cobrança de valores na conta de acordo com o contratado.
+
+C1_2: Notas atribuídas à capacidade de manter a conexão sem quedas.
+
+C1_3: Notas atribuídas à velocidade de navegação.
+
+D: Cobrança
+
+D1_1: Notas atribuídas à cobrança dos valores na conta de acordo com o contratado.
+
+D1_2: Notas atribuídas à clareza das informações na conta.
+
+A2: Atendimento
+
+A2_1: Notas atribuídas ao tempo de espera para falar com o atendente.
+
+A2_2: Notas atribuídas à necessidade de repetir a demanda.
+
+A2_3: Notas atribuídas à capacidade de esclarecimento por parte dos atendentes.
+
+A3: Notas atribuídas à qualidade do Atendimento Telefônico da operadora.
+
+A4: Notas atribuídas à qualidade do Atendimento pela Internet da operadora.
+
+E: Capacidade de Resolução
+
+E2 :Nota atribuída à resolução do problema de cobrança da prestadora citada.
+
+E4: Nota atribuída à resolução da alteração do plano ou condição comercial.
+
+F: Reparo e Instalação
+
+F2_1: Notas atribuídas ao tempo de espera entre a solicitação de instalação e a visita do técnico.
+
+F2_2: Cumprimento do prazo acordado para instalação.
+
+F2_3: Qualidade da instalação do serviço.
+
+F4_1: Notas atribuídas ao tempo de espera entre a solicitação de reparo e a visita do técnico.
+
+F4_2: Cumprimento do prazo acordado para reparo.
+
+F4_3: Qualidade do reparo do serviço.
+
+```{r include=FALSE}
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(corrplot)
+PESQUISA <- read_delim("PESQUISA_BD_SCM_completa_17_18.csv", 
+                                             ";", escape_double = FALSE, trim_ws = TRUE)
+```
+
+##TRANSFORMAÇÃO DA BASE DE DADOS
+
+```{r echo=FALSE}
+
+
+  dados <- PESQUISA %>%  mutate(SEXO = ifelse(Q8 == 1, "F", "M"))  %>%   select(ESTADO, OPERADORA, ANO_BASE,   Q7, SEXO, H2, J1, B1_1, B1_2, C1_1, C1_2, C1_3, D1_1, D1_2, 
+  E2, E4, F2_1, F2_2, F2_3, F4_1, F4_2, F4_3, A2_1, A2_2, A2_3, A3, A4) %>% 
+  filter( Q7 < 999997, H2 < 999998, J1 < 11, B1_1 < 11, B1_2 < 11, C1_1< 11, C1_2< 11, C1_3< 11, D1_1< 11, 
+         D1_2 < 11,E2< 11, E4< 11, F2_1< 11, F2_2< 11, F2_3< 11, F4_1< 11, F4_2< 11, F4_3< 11,
+         A2_1< 11, A2_2< 11, A2_3< 11, A3< 11, A4< 11, OPERADORA %in% c("OI", "VIVO", "NET", "GVT", "SKY")) %>% rename(RENDA = H2) %>%  rename(IDADE = Q7) %>% 
+     rename(SATISFACAO_GERAL = J1) 
+  
+ 
+
+ 
+  
+```
+
+```{r include=FALSE}
+SEXO <- as.vector(dados$SEXO)
+  ESTADO <- as.vector(dados$ESTADO)
+  OPERADORA <- as.vector(dados$OPERADORA)
+  
+  dados <- dados %>% select( -ESTADO, -OPERADORA, -SEXO) 
+    dados <- data.frame (OPERADORA,ESTADO, SEXO, dados)
+```
+
+
+```{r include=FALSE}
+Norte <- c("AM", "AP", "RR", "RO", "PA", "AC", "TO")
+  Nordeste <- c("BA", "CE", "AL", "SE", "PB", "RN", "MA", "PI", "PE")
+  Centro_Oeste <- c("DF", "MT", "MS", "GO")     
+  Sudeste <- c("SP", "MG", "ES", "RJ")
+  Sul <- c("RS", "PR", "SC")
+       
+   
+  REGIAO <- c()
+  for (i in 1:length(dados$ESTADO)){
+    if(dados$ESTADO[i] %in% Norte) REGIAO[i] <- "N"
+    if(dados$ESTADO [i] %in% Nordeste) REGIAO[i] <- "NE"
+    if(dados$ESTADO [i] %in% Centro_Oeste) REGIAO[i] <- "CO"
+    if(dados$ESTADO [i] %in% Sudeste ) REGIAO[i] <- "SO"
+    if(dados$ESTADO [i] %in% Sul ) REGIAO[i] <- "S"
+  }
+  
+   
+```
+
+
+```{r echo=FALSE}
+dados <- data.frame(dados, REGIAO)
+```
+
+
+```{r echo=FALSE}
+summary(dados) 
+```
+
+
+## ANÁLISE DESCRITIVA
+
+
+```{r pressure, echo=FALSE}
+dados%>% 
+    ggplot(aes(OPERADORA,REGIAO)) + 
+    geom_tile(aes(fill=SATISFACAO_GERAL)) + ggtitle("Satisfação Geral das Operadoras por Região")
+  
+  dados%>% 
+    ggplot(aes(OPERADORA, SEXO)) + 
+    geom_tile(aes(fill=SATISFACAO_GERAL)) + ggtitle("Satisfação Geral das Operadoras por Sexo")
+  
+  dados%>% 
+    ggplot(aes(OPERADORA, IDADE)) + 
+    geom_tile(aes(fill=SATISFACAO_GERAL)) + ggtitle("Satisfação Geral das Operadoras por Idade")
+  
+  dados%>% 
+    ggplot(aes(SEXO, REGIAO)) + 
+    geom_tile(aes(fill=SATISFACAO_GERAL)) + ggtitle("Satisfação Geral do gênero  por Região")
+  
+  dados%>% 
+    ggplot(aes(SEXO, IDADE)) + 
+    geom_tile(aes(fill=SATISFACAO_GERAL)) + ggtitle("Satisfação Geral do gênero  por Idade")
+  
+  dados%>% 
+    ggplot(aes(REGIAO, IDADE)) + 
+    geom_tile(aes(fill=SATISFACAO_GERAL)) + ggtitle("Satisfação Geral da Região por Idade")
+```
+
+##REGRESSÃO
+
+```{r}
+modelo1 <- lm(formula = SATISFACAO_GERAL ~ B1_1 + B1_2 + C1_1 + C1_2 + C1_3 + D1_1 + D1_2 + E2 + E4 + F2_1 +
+                  F2_2 + F2_3 + F4_1 + F4_2 + F4_3 + A2_1 + A2_2 + A2_3 + A3 + A4 
+                +SEXO + RENDA + REGIAO + IDADE, data = dados)
+  summary(modelo1)
+```
+
+##VERIFICAÇÃO DAS CORRELAÇÕES
+
+
+```{r}
+corrplot(cor(dados[ ,8:27]), method="color",order="hclust",addCoef.col = "black",type="upper", diag=FALSE)
+```
+
+
+##ANÁLISE FATORIAL
+```{r}
+ pca_result <- prcomp(dados[ ,8:27], scale = TRUE)
+  summary(pca_result)
+  head(pca_result$x)
+  
+  pca2 <- as.data.frame(pca_result$x)
+  dados2 <- data.frame(dados, pca2)
+  
+```
+
+##MODELO2
+
+```{r}
+modelo2 <- lm(formula = SATISFACAO_GERAL ~ PC1 + PC2 + PC3 + PC4 + PC5  +  PC6 +PC7  +PC8 + PC9 +PC10 +PC11 + PC12 +PC13 + PC14 + PC15 +PC16 +PC17 +PC18 +PC19 +PC20 + SEXO + RENDA + REGIAO + IDADE,   data = dados2 )
+  
+  summary(modelo2)
+  
+  corrplot(cor(dados2[ ,29:48]), method="color",order="hclust",addCoef.col = "black",type="upper", diag=FALSE)  
+```
+
+##MODELO 3
+```{r}
+modelo3 <- lm(formula = SATISFACAO_GERAL ~  PC1 + SEXO + RENDA + REGIAO + IDADE , data = dados2 )
+summary(modelo3)
+hist((modelo3$residuals)) 
+shapiro.test(modelo3$residuals)
+qqnorm(modelo3$residuals)
+qqline(modelo3$residuals)
+plot(modelo3$residuals)
+```
+
+##GRÁFICOS COMPARATIVOS DAS VARIÁVEIS CATEGORICAS
+
+```{r echo=FALSE}
+dados2%>% 
+  ggplot(aes(x= PC1, y=(SATISFACAO_GERAL), color=REGIAO))+
+  geom_point()+stat_smooth(method = "lm") +labs(title = "Regressão Linear ", x ="COMPONENTE PRINCIPAL", y ="SATISFACAO_GERAL")
+
+
+dados2%>% 
+  ggplot(aes(x= PC1, y=(SATISFACAO_GERAL), color=OPERADORA))+
+  geom_point()+stat_smooth(method = "lm") +labs(title = "Regressão Linear ", x ="COMPONENTE PRINCIPAL", y ="SATISFACAO_GERAL")
+
+dados2%>% 
+  ggplot(aes(x= PC1, y=(SATISFACAO_GERAL), color=SEXO))+
+  geom_point()+stat_smooth(method = "lm") +labs(title = "Regressão Linear ", x ="COMPONENTE PRINCIPAL", y ="SATISFACAO_GERAL")
+
+
+```
